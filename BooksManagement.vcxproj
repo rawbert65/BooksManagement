@@ -129,6 +129,10 @@
   <ItemGroup>
     <ClCompile Include="BooksManagement.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\Desktop\json-develop\single_include\nlohmann\json.hpp" />
+    <ClInclude Include="..\..\..\Desktop\json-develop\single_include\nlohmann\json_fwd.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
