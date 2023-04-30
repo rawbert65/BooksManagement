@@ -12,6 +12,7 @@ struct BookData {
     string author;
     string title;
     string link;
+    string language;
 };
 
 class Person {
@@ -45,16 +46,26 @@ private:
     int publicationYear;
     Author author;
     string link;
+    string language;
 public:
-    Book(const string& title, const string& author, const string& link)
-        : title(title), author(author), link(link) {}
+    Book(const string& title, const string& author, const string& link, const string& language)
+        : title(title), author(author), link(link), language(language) {}
 
     bool operator==(const Book& other) const {
         return title == other.title;
     }
 
+    // Overloaded operator for language
+    bool operator<(const Book& other) const {
+        return language < other.language;
+    }
+
     string getTitle() const {
         return title;
+    }
+
+    string getLanguage() const {
+        return language;
     }
 
     string getLink() const {
@@ -66,7 +77,7 @@ public:
     }
 
     Book(const nlohmann::json& jsonData)
-        : title(jsonData["title"]), author(jsonData), link(jsonData["link"]) {}
+        : title(jsonData["title"]), author(jsonData), link(jsonData["link"]), language(jsonData["language"]) {}
 };
 
 template <typename T>
@@ -90,6 +101,17 @@ public:
         return result;
     }
 
+    vector<const Book*> searchBooksByLanguage(const string& language) const {
+        vector<const Book*> result;
+        for (size_t i = 0; i < items.size(); ++i) {
+            const Book& book = items[i];
+            if (book.getLanguage() == language) {
+                result.push_back(&book);
+            }
+        }
+        return result;
+    }
+
     const T& getItem(size_t index) const {
         return items[index];
     }
@@ -107,6 +129,7 @@ vector<BookData> parseJsonData(const nlohmann::json& jsonData) {
         data.author = bookData["author"];
         data.link = bookData["link"];
         data.title = bookData["title"];
+        data.language = bookData["language"];
 
         booksData.push_back(data);
     }
@@ -193,11 +216,64 @@ void searchBooksByAuthor(const Library<Book>& library) {
     cout << "Enter the name of the author: ";
     getline(cin, authorName);
 
+    vector<const Book*> booksByAuthor;
     for (size_t i = 0; i < library.getSize(); ++i) {
         const Book& book = library.getItem(i);
         if (book.getAuthor().getName() == authorName) {
-            cout << book.getTitle() << endl;
+            booksByAuthor.push_back(&book);
+            cout << booksByAuthor.size() << ". " << book.getTitle() << endl;
         }
+    }
+
+    if (!booksByAuthor.empty()) {
+        cout << "Select a book to open its link (or enter 0 to go back): ";
+        int selectedIndex;
+        cin >> selectedIndex;
+        cin.ignore();
+
+        if (selectedIndex >= 1 && selectedIndex <= static_cast<int>(booksByAuthor.size())) {
+            const Book& selectedBook = *booksByAuthor[selectedIndex - 1];
+            string link = selectedBook.getLink();
+            if (!link.empty()) {
+                ShellExecuteA(NULL, "open", link.c_str(), NULL, NULL, SW_SHOWNORMAL);
+            }
+        }
+    }
+    else {
+        cout << "No books found by the author: " << authorName << endl;
+    }
+}
+
+void searchBooksByLanguage(const Library<Book>& library) {
+    string language;
+    cout << "Enter the language: ";
+    getline(cin, language);
+
+    vector<const Book*> booksByLanguage;
+    for (size_t i = 0; i < library.getSize(); ++i) {
+        const Book& book = library.getItem(i);
+        if (book.getLanguage() == language) {
+            booksByLanguage.push_back(&book);
+            cout << booksByLanguage.size() << ". " << book.getTitle() << endl;
+        }
+    }
+
+    if (!booksByLanguage.empty()) {
+        cout << "Select a book to open its link (or enter 0 to go back): ";
+        int selectedIndex;
+        cin >> selectedIndex;
+        cin.ignore();
+
+        if (selectedIndex >= 1 && selectedIndex <= static_cast<int>(booksByLanguage.size())) {
+            const Book& selectedBook = *booksByLanguage[selectedIndex - 1];
+            string link = selectedBook.getLink();
+            if (!link.empty()) {
+                ShellExecuteA(NULL, "open", link.c_str(), NULL, NULL, SW_SHOWNORMAL);
+            }
+        }
+    }
+    else {
+        cout << "No books found in the language: " << language << endl;
     }
 }
 
@@ -239,7 +315,8 @@ int main() {
         cout << "Select an option:" << endl;
         cout << "1. Display all books" << endl;
         cout << "2. Search books by author" << endl;
-        cout << "3. Quit" << endl;
+        cout << "3. Search books by language" << endl;
+        cout << "4. Quit" << endl;
         cout << "Enter your choice: ";
         int choice;
         cin >> choice;
@@ -249,34 +326,16 @@ int main() {
             displayBooksInPages(library, jsonData, booksData);
         }
         else if (choice == 2) {
-            string authorName;
-            cout << "Enter the name of the author: ";
-            getline(cin, authorName);
-
-            vector<const Book*> booksByAuthor = library.searchBooksByAuthor(authorName);
-            if (booksByAuthor.empty()) {
-                cout << "No books found by author " << authorName << endl;
-            }
-            else {
-                cout << "Books by author " << authorName << ":" << endl;
-                for (size_t i = 0; i < booksByAuthor.size(); i++) {
-                    cout << i + 1 << ". " << booksByAuthor[i]->getTitle() << endl;
-                }
-
-                cout << "Select a book to open its link (or enter 0 to go back): ";
-                int selectedIndex;
-                cin >> selectedIndex;
-                cin.ignore();
-                if (selectedIndex >= 1 && selectedIndex <= static_cast<int>(booksByAuthor.size())) {
-                    const Book& selectedBook = *booksByAuthor[selectedIndex - 1];
-                    string link = selectedBook.getLink();
-                    if (!link.empty()) {
-                        ShellExecuteA(NULL, "open", link.c_str(), NULL, NULL, SW_SHOWNORMAL);
-                    }
-                }
-            }
+            searchBooksByAuthor(library);
+            cout << "Press Enter to continue...";
+            cin.get();
         }
         else if (choice == 3) {
+            searchBooksByLanguage(library);
+            cout << "Press Enter to continue...";
+            cin.get();
+        }
+        else if (choice == 4) {
             break;
         }
         else {
